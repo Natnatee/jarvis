@@ -14,12 +14,15 @@ export default function page() {
       return setActive(false);
     }
     const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const c = new AudioContext({ sampleRate: 16000 });
+    const c = new AudioContext({ sampleRate: 24000 });
     const g = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY! });
     let next = 0;
     const j = await g.live.connect({
       model: 'gemini-2.5-flash-native-audio-preview-12-2025',
-      config: { responseModalities: [Modality.AUDIO] },
+      config: { 
+        responseModalities: [Modality.AUDIO],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } } // Voices: Puck, Charon, Kore, Fenrir, Aoede
+      },
       callbacks: {
         onmessage: (m) => {
           const d = m.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
@@ -28,7 +31,7 @@ export default function page() {
           const i = new Int16Array(b.buffer);
           const f = new Float32Array(i.length);
           for (let k = 0; k < i.length; k++) f[k] = i[k] / 32768;
-          const buf = c.createBuffer(1, f.length, 16000);
+          const buf = c.createBuffer(1, f.length, 24000);
           buf.copyToChannel(f, 0);
           const src = c.createBufferSource();
           src.buffer = buf;
@@ -44,7 +47,7 @@ export default function page() {
       const inp = e.inputBuffer.getChannelData(0);
       const out = new Int16Array(inp.length);
       for (let k = 0; k < inp.length; k++) out[k] = Math.max(-1, Math.min(1, inp[k])) * 0x7fff;
-      j.sendRealtimeInput({ media: { data: btoa(String.fromCharCode(...new Uint8Array(out.buffer))), mimeType: 'audio/pcm;rate=16000' } });
+      j.sendRealtimeInput({ media: { data: btoa(String.fromCharCode(...new Uint8Array(out.buffer))), mimeType: 'audio/pcm;rate=24000' } });
     };
     c.createMediaStreamSource(s).connect(p);
     p.connect(c.destination);
