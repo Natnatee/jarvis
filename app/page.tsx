@@ -1,65 +1,67 @@
-import Image from "next/image";
+'use client';
+import { useRef, useState } from 'react';
+import { GoogleGenAI, Modality } from '@google/genai';
 
-export default function Home() {
+export default function page() {
+  const [active, setActive] = useState(false);
+  const r = useRef<any>({});
+
+  const start = async () => {
+    if (active) {
+      r.current.s?.getTracks().forEach((t: any) => t.stop());
+      r.current.c?.close();
+      r.current.j?.close();
+      return setActive(false);
+    }
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const c = new AudioContext({ sampleRate: 16000 });
+    const g = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY! });
+    let next = 0;
+    const j = await g.live.connect({
+      model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+      config: { responseModalities: [Modality.AUDIO] },
+      callbacks: {
+        onmessage: (m) => {
+          const d = m.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+          if (!d) return;
+          const b = Uint8Array.from(atob(d), c => c.charCodeAt(0));
+          const i = new Int16Array(b.buffer);
+          const f = new Float32Array(i.length);
+          for (let k = 0; k < i.length; k++) f[k] = i[k] / 32768;
+          const buf = c.createBuffer(1, f.length, 16000);
+          buf.copyToChannel(f, 0);
+          const src = c.createBufferSource();
+          src.buffer = buf;
+          src.connect(c.destination);
+          const time = Math.max(c.currentTime, next);
+          src.start(time);
+          next = time + buf.duration;
+        }
+      }
+    });
+    const p = c.createScriptProcessor(4096, 1, 1);
+    p.onaudioprocess = (e) => {
+      const inp = e.inputBuffer.getChannelData(0);
+      const out = new Int16Array(inp.length);
+      for (let k = 0; k < inp.length; k++) out[k] = Math.max(-1, Math.min(1, inp[k])) * 0x7fff;
+      j.sendRealtimeInput({ media: { data: btoa(String.fromCharCode(...new Uint8Array(out.buffer))), mimeType: 'audio/pcm;rate=16000' } });
+    };
+    c.createMediaStreamSource(s).connect(p);
+    p.connect(c.destination);
+    r.current = { s, c, j };
+    setActive(true);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div style={{ background: '#000', color: '#fff', height: '100vh', display: 'grid', placeItems: 'center', fontFamily: 'sans-serif' }}>
+      <button onClick={start} style={{ 
+        width: 200, height: 200, borderRadius: '50%', border: 'none', 
+        background: active ? '#f44' : '#44f', color: '#fff', fontSize: 24, cursor: 'pointer',
+        boxShadow: active ? '0 0 50px #f44' : '0 0 20px #44f', transition: '0.3s'
+      }}>
+        {active ? 'Stop' : 'Start'}
+      </button>
     </div>
   );
 }
+
