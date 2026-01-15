@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
 import { base64ToFloat32, floatToBase64PCM } from '@/lib/audioConverter';
-
+import instructions from '@/lib/instructions.json';
 const SAMPLE_RATE = 24000;
 
 export function useJarvis() {
@@ -30,7 +30,9 @@ export function useJarvis() {
       const session = await genAI.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         config: {
+          systemInstruction: { parts: [{ text: instructions.instructions }] },
           responseModalities: [Modality.AUDIO],
+          tools: instructions.tools as any,
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } }
         },
         callbacks: {
