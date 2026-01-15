@@ -4,7 +4,14 @@ import { useRef, useState, useCallback } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
 import { base64ToFloat32, floatToBase64PCM } from '@/lib/audioConverter';
 import instructions from '@/lib/instructions.json';
+import { say_hello } from '@/app/action/say_hello';
+
 const SAMPLE_RATE = 24000;
+
+// Tool handlers - เพิ่ม function ใหม่ได้ที่นี่
+const toolHandlers: Record<string, () => Promise<any>> = {
+  say_hello: say_hello,
+};
 
 export function useJarvis() {
   const [active, setActive] = useState(false);
@@ -36,11 +43,52 @@ export function useJarvis() {
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } }
         },
         callbacks: {
-          onmessage: (msg) => {
+          onmessage: async (msg) => {
+            // Handle Tool Calls
+            const toolCall = msg.toolCall;
+            if (toolCall?.functionCalls) {
+              for (const fc of toolCall.functionCalls) {
+                console.log(`🔧 Tool called: ${fc.name}`, fc.args);
+
+                if (!fc.name || !fc.id) continue;
+                const handler = toolHandlers[fc.name];
+                if (handler) {
+                  try {
+                    const result = await handler();
+                    console.log(`✅ Tool result:`, result);
+
+                    // ส่ง response กลับไปให้ Gemini
+                    session.sendToolResponse({
+                      functionResponses: [{
+                        id: fc.id,
+                        name: fc.name,
+                        response: result
+                      }]
+                    });
+                  } catch (error) {
+                    console.error(`❌ Tool error:`, error);
+                    session.sendToolResponse({
+                      functionResponses: [{
+                        id: fc.id,
+                        name: fc.name,
+                        response: { error: String(error) }
+                      }]
+                    });
+                  }
+                } else {
+                  console.warn(`⚠️ Unknown tool: ${fc.name}`);
+                }
+              }
+              return;
+            }
+
+            // Handle text response (thinking)
             const text = msg.serverContent?.modelTurn?.parts?.find(p => p.text)?.text;
             if (text) {
-              setTranscript(prev => prev + text); // นำข้อความมาต่อกันเพื่อแสดงผล
+              setTranscript(prev => prev + text);
             }
+
+            // Handle audio response
             const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (!audioData) return;
 
