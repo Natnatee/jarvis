@@ -8,6 +8,7 @@ const SAMPLE_RATE = 24000;
 
 export function useJarvis() {
   const [active, setActive] = useState(false);
+  const [transcript, setTranscript] = useState('');
   const refs = useRef<any>({});
 
   const toggle = useCallback(async () => {
@@ -23,17 +24,21 @@ export function useJarvis() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
       const genAI = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY! });
-      
+
       let nextStartTime = 0;
-      
+
       const session = await genAI.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
-        config: { 
+        config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } }
         },
         callbacks: {
           onmessage: (msg) => {
+            const text = msg.serverContent?.modelTurn?.parts?.find(p => p.text)?.text;
+            if (text) {
+              setTranscript(prev => prev + text); // นำข้อความมาต่อกันเพื่อแสดงผล
+            }
             const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (!audioData) return;
 
@@ -44,7 +49,7 @@ export function useJarvis() {
             const source = audioCtx.createBufferSource();
             source.buffer = buffer;
             source.connect(audioCtx.destination);
-            
+
             const playTime = Math.max(audioCtx.currentTime, nextStartTime);
             source.start(playTime);
             nextStartTime = playTime + buffer.duration;
@@ -56,9 +61,9 @@ export function useJarvis() {
       processor.onaudioprocess = (e) => {
         const inputData = e.inputBuffer.getChannelData(0);
         session.sendRealtimeInput({
-          media: { 
-            data: floatToBase64PCM(inputData), 
-            mimeType: `audio/pcm;rate=${SAMPLE_RATE}` 
+          media: {
+            data: floatToBase64PCM(inputData),
+            mimeType: `audio/pcm;rate=${SAMPLE_RATE}`
           }
         });
       };
@@ -74,5 +79,5 @@ export function useJarvis() {
     }
   }, [active]);
 
-  return { active, toggle };
+  return { active, toggle, transcript };
 }

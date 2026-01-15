@@ -4,7 +4,7 @@ import { useJarvis } from '@/hooks/useJarvis';
 import { StartButton } from '@/components/StartButton';
 
 export default function Page() {
-  const { active, toggle } = useJarvis();
+  const { active, toggle, transcript } = useJarvis();
 
   return (
     <div style={{ 
@@ -16,6 +16,7 @@ export default function Page() {
       fontFamily: 'sans-serif' 
     }}>
       <StartButton active={active} onClick={toggle} />
+      <p>{transcript}</p>
     </div>
   );
 }
