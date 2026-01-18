@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
 import { base64ToFloat32, floatToBase64PCM } from '@/lib/audioConverter';
 import instructions from '@/lib/instructions.json';
@@ -13,10 +13,33 @@ const toolHandlers: Record<string, () => Promise<any>> = {
   say_hello: say_hello,
 };
 
+export type JarvisStatus = 'idle' | 'listening' | 'thinking' | 'speaking';
+
 export function useJarvis() {
   const [active, setActive] = useState(false);
-  const [transcript, setTranscript] = useState('');
+  const [status, setStatus] = useState<JarvisStatus>('idle');
   const refs = useRef<any>({});
+  const speakTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-close if listening for too long
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    if (status === 'listening' && active) {
+        timeout = setTimeout(() => {
+            console.log('💤 Auto closing due to inactivity...');
+            // เรียก toggle เพื่อปิด (ต้องแน่ใจว่ามันจะปิด)
+            // เนื่องจาก toggle ใช้ active state ใน closure, เราอาจต้องเรียกผ่านวิธีอื่น หรือพึ่งพา setActive
+            if (refs.current.session) {
+                refs.current.stream?.getTracks().forEach((t: any) => t.stop());
+                refs.current.audioCtx?.close();
+                refs.current.session?.close();
+                setActive(false);
+                setStatus('idle');
+            }
+        }, 8000); // 8 วินาทีละกันครับ 5 วิสั้นไปนิดนึง
+    }
+    return () => clearTimeout(timeout);
+  }, [status, active]);
 
   // ส่งข้อความแทนการพูด
   const sendText = useCallback((message: string) => {
@@ -24,6 +47,7 @@ export function useJarvis() {
       console.warn('⚠️ Session not active');
       return;
     }
+    setStatus('thinking');
     refs.current.session.sendClientContent({
       turns: [{ role: 'user', parts: [{ text: message }] }]
     });
@@ -36,6 +60,8 @@ export function useJarvis() {
       refs.current.audioCtx?.close();
       refs.current.session?.close();
       setActive(false);
+      setStatus('idle');
+      if (speakTimeout.current) clearTimeout(speakTimeout.current);
       return;
     }
 
@@ -59,10 +85,27 @@ export function useJarvis() {
             // Handle Tool Calls
             const toolCall = msg.toolCall;
             if (toolCall?.functionCalls) {
+              setStatus('thinking');
               for (const fc of toolCall.functionCalls) {
                 console.log(`🔧 Tool called: ${fc.name}`, fc.args);
 
                 if (!fc.name || !fc.id) continue;
+
+                // Special handling for close_session
+                if (fc.name === 'close_session') {
+                    console.log('👋 Closing session via tool call');
+                    session.sendToolResponse({
+                        functionResponses: [{ id: fc.id, name: fc.name, response: { success: true } }]
+                    });
+                     // Close everything
+                    stream.getTracks().forEach((t: any) => t.stop());
+                    audioCtx.close();
+                    session.close();
+                    setActive(false);
+                    setStatus('idle');
+                    return;
+                }
+
                 const handler = toolHandlers[fc.name];
                 if (handler) {
                   try {
@@ -94,11 +137,6 @@ export function useJarvis() {
               return;
             }
 
-            // Handle text response (thinking)
-            const text = msg.serverContent?.modelTurn?.parts?.find(p => p.text)?.text;
-            if (text) {
-              setTranscript(prev => prev + text);
-            }
 
             // Handle audio response
             const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
@@ -115,6 +153,15 @@ export function useJarvis() {
             const playTime = Math.max(audioCtx.currentTime, nextStartTime);
             source.start(playTime);
             nextStartTime = playTime + buffer.duration;
+            
+            // Set stats to speaking
+            setStatus('speaking');
+            
+            // Reset to listening after audio finishes
+            if (speakTimeout.current) clearTimeout(speakTimeout.current);
+            speakTimeout.current = setTimeout(() => {
+                setStatus('listening');
+            }, (buffer.duration * 1000) + 200); // Add small buffer
           }
         }
       });
@@ -135,11 +182,13 @@ export function useJarvis() {
 
       refs.current = { stream, audioCtx, session };
       setActive(true);
+      setStatus('listening');
     } catch (error) {
       console.error('Failed to start Jarvis:', error);
       setActive(false);
+      setStatus('idle');
     }
   }, [active]);
 
-  return { active, toggle, transcript, sendText };
+  return { active, toggle, sendText, status };
 }

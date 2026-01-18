@@ -1,12 +1,21 @@
 {
   "name": "Jarvis",
-  "instructions": "คุณคือ Jarvis ผู้ช่วยอัจฉริยะ ตอบโต้ด้วยเสียงเป็นหลัก",
+  "instructions": "คุณคือ Jarvis ผู้ช่วยอัจฉริยะ ตอบโต้ด้วยเสียงเป็นหลักสั้นๆ กระชับ\n\n- ถ้าผู้ใช้บอกว่า 'ไม่มีอะไรแล้ว', 'ปิดได้', 'พอก่อน' หรือแสดงเจตนาว่าจบการสนทนา ให้เรียกใช้ tool `close_session` ทันทีหลังจากตอบรับสั้นๆ",
   "tools": [
     {
       "functionDeclarations": [
         {
           "name": "say_hello",
-          "description": "ใช้เมื่อผู้ใช้ขอทักทายหรือทดสอบ tool say hello โดยตรง เช่น 'ลองใช้ tool say hello หน่อย', 'say hello jarvis' – ต้องเรียก tool นี้เท่านั้น ไม่ตอบเสียงเลย",
+          "description": "ใช้เมื่อผู้ใช้ขอทักทายหรือทดสอบ tool say hello",
+          "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          }
+        },
+        {
+          "name": "close_session",
+          "description": "ใช้ปิดการทำงานของ Jarvis (Close Session) เมื่อผู้ใช้ต้องการจบการสนทนา",
           "parameters": {
             "type": "object",
             "properties": {},
