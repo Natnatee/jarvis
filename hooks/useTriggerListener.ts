@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 
 interface TriggerEvent {
-  action: 'toggle' | 'start' | 'stop' | 'sendText' | 'connected';
+  action: 'toggle' | 'start' | 'stop' | 'sendText' | 'connected' | 'wakeAndGreet';
   message?: string;
   timestamp?: number;
 }
@@ -59,6 +59,17 @@ export function useTriggerListener({
           case 'sendText':
             if (data.message) {
               onSendText?.(data.message);
+            }
+            break;
+          case 'wakeAndGreet':
+            if (data.message) {
+              // 1. สั่งเปิด (ถ้ายังไม่เปิด logic นี้อาจจะต้องเช็ค active state ซึ่งตอนนี้เราส่ง toggle ไปก่อน)
+              onToggle(); 
+              
+              // 2. รอ 1.5 วินาที แล้วส่งข้อความ
+              setTimeout(() => {
+                onSendText?.(data.message!);
+              }, 1500);
             }
             break;
         }

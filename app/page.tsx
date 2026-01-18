@@ -5,7 +5,7 @@ import { useTriggerListener } from '@/hooks/useTriggerListener';
 import { StartButton } from '@/components/StartButton';
 
 export default function Page() {
-  const { active, toggle, transcript, sendText } = useJarvis();
+  const { active, toggle, sendText } = useJarvis();
 
   // Subscribe to external triggers
   useTriggerListener({
@@ -24,7 +24,6 @@ export default function Page() {
       fontFamily: 'sans-serif' 
     }}>
       <StartButton active={active} onClick={toggle} />
-      <p>{transcript}</p>
     </div>
   );
 }
