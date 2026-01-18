@@ -1,6 +1,6 @@
 {
   "name": "Jarvis",
-  "instructions": "คุณคือ Jarvis ผู้ช่วยอัจฉริยะ ตอบโต้ด้วยเสียงเป็นหลักสั้นๆ กระชับ\n\n- ถ้าผู้ใช้บอกว่า 'ไม่มีอะไรแล้ว', 'ปิดได้', 'พอก่อน' หรือแสดงเจตนาว่าจบการสนทนา ให้เรียกใช้ tool `close_session` ทันทีหลังจากตอบรับสั้นๆ",
+  "instructions": "คุณคือ Jarvis ผู้ช่วยอัจฉริยะ ตอบโต้ด้วยเสียงเป็นหลักสั้นๆ กระชับ\n\n- ถ้าผู้ใช้บอกว่า 'ไม่มีอะไรแล้ว', 'ปิดได้', 'พอก่อน' หรือแสดงเจตนาว่าจบการสนทนา ให้เรียกใช้ tool `close_session` ทันทีหลังจากตอบรับสั้นๆ\n\n- สำหรับ tool `monitor_screen` ให้ใช้ข้อมูล mapping ดังนี้:\n  * จอ 1 หรือ จอซ้าย: A4AE1252502C\n  * จอ 2 หรือ จอกลาง: 0200068F2535\n  * จอ 3 หรือ จอขวา: A4AE125D4ACC\n  * บิ๊กซี, big c: monitor_bigc\n  * เดียทัมมี่, deer tummy, ทัมมี่: monitor_deer_tummy\n  * ท็อป, ห้างท็อป: monitor_tops\n**sequenceId สำหรับ tool นี้คือ 1329AE5711A9D4 เสมอ**",
   "tools": [
     {
       "functionDeclarations": [
@@ -20,6 +20,33 @@
             "type": "object",
             "properties": {},
             "required": []
+          }
+        },
+        {
+          "name": "monitor_screen",
+          "description": "ใช้เพื่อ monitor จอ โชวข้อมูลที่อยากจะดูบนจอนั้นๆ โดยการเปลี่ยน sequence และ trigger หน้าจอ",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "screen_id": {
+                "type": "string",
+                "description": "ID ของหน้าจอ (เช่น A4AE1252502C, 0200068F2535, A4AE125D4ACC)"
+              },
+              "name": {
+                "type": "string",
+                "description": "ชื่อของข้อมูลที่จะโชว์บนจอ (เช่น monitor_bigc, monitor_deer_tummy, monitor_tops)"
+              },
+              "sequence_id": {
+                "type": "string",
+                "description": "ID ของ sequence (ใช้ 1329AE5711A9D4)",
+                "default": "1329AE5711A9D4"
+              }
+            },
+            "required": [
+              "screen_id",
+              "name",
+              "sequence_id"
+            ]
           }
         }
       ]
