@@ -18,6 +18,18 @@ export function useJarvis() {
   const [transcript, setTranscript] = useState('');
   const refs = useRef<any>({});
 
+  // ส่งข้อความแทนการพูด
+  const sendText = useCallback((message: string) => {
+    if (!refs.current.session) {
+      console.warn('⚠️ Session not active');
+      return;
+    }
+    refs.current.session.sendClientContent({
+      turns: [{ role: 'user', parts: [{ text: message }] }]
+    });
+    console.log('📝 Text sent:', message);
+  }, []);
+
   const toggle = useCallback(async () => {
     if (active) {
       refs.current.stream?.getTracks().forEach((t: any) => t.stop());
@@ -129,5 +141,5 @@ export function useJarvis() {
     }
   }, [active]);
 
-  return { active, toggle, transcript };
+  return { active, toggle, transcript, sendText };
 }

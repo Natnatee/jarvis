@@ -1,10 +1,18 @@
 'use client';
 
 import { useJarvis } from '@/hooks/useJarvis';
+import { useTriggerListener } from '@/hooks/useTriggerListener';
 import { StartButton } from '@/components/StartButton';
 
 export default function Page() {
-  const { active, toggle, transcript } = useJarvis();
+  const { active, toggle, transcript, sendText } = useJarvis();
+
+  // Subscribe to external triggers
+  useTriggerListener({
+    onToggle: toggle,
+    onSendText: sendText,
+    enabled: true
+  });
 
   return (
     <div style={{ 
@@ -20,4 +28,3 @@ export default function Page() {
     </div>
   );
 }
-
