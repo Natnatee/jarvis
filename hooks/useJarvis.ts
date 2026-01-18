@@ -4,7 +4,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
 import { base64ToFloat32, floatToBase64PCM } from '@/lib/audioConverter';
 import instructions from '@/lib/instructions.json';
-import { say_hello } from '@/app/action/say_hello';
+import { say_hello } from '@/app/actions/say_hello';
 
 const SAMPLE_RATE = 24000;
 
