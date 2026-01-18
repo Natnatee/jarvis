@@ -1,99 +1,118 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #ededed;
+  --jarvis-orange: #ff9d00;
+  --jarvis-glow: #ff5e00;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #000000;
-    --foreground: #ededed;
-  }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  margin: 0;
-  overflow: hidden; /* ปิด scrollbar */
-}
-
-/* Animations */
-@keyframes breathing {
-  0% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 20px cyan; }
-  50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 40px cyan; }
-  100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 20px cyan; }
-}
-
-@keyframes spinning {
-  0% { transform: rotate(0deg); border-top-color: cyan; }
-  50% { border-top-color: magenta; }
-  100% { transform: rotate(360deg); border-top-color: cyan; }
-}
-
-@keyframes speaking {
-  0%, 100% { height: 20px; }
-  50% { height: 60px; }
-}
-
-.visualizer-container {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   background: black;
+  color: white;
+  margin: 0;
+  overflow: hidden;
 }
 
-.status-indicator {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  transition: all 0.5s ease;
+/* --- JARVIS REACTOR ANIMATIONS --- */
+
+@keyframes spin-cw {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.listening {
-  background: rgba(0, 255, 255, 0.1);
-  border: 2px solid cyan;
-  animation: breathing 3s infinite ease-in-out;
+@keyframes spin-ccw {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
 }
 
-.thinking {
-  width: 120px;
-  height: 120px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-top: 4px solid cyan;
-  border-radius: 50%;
-  animation: spinning 1s linear infinite;
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+@keyframes core-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 30px var(--jarvis-glow); }
+  50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 60px var(--jarvis-orange); }
 }
 
-.speaking-container {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  height: 100px;
+@keyframes thinking-jiggle {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(5deg) scale(1.1); }
+  50% { transform: rotate(-5deg) scale(0.9); }
+  75% { transform: rotate(2deg) scale(1.05); }
+  100% { transform: rotate(0deg) scale(1); }
 }
 
-.bar {
-  width: 10px;
-  background: cyan;
-  border-radius: 5px;
-  animation: speaking 0.5s infinite ease-in-out;
-  box-shadow: 0 0 10px cyan;
+@keyframes speaking-vibrate {
+  0% { transform: scale(1); filter: brightness(1); }
+  20% { transform: scale(1.1); filter: brightness(1.5); }
+  40% { transform: scale(0.95); filter: brightness(1.2); }
+  60% { transform: scale(1.05); filter: brightness(1.4); }
+  80% { transform: scale(0.98); filter: brightness(1.1); }
+  100% { transform: scale(1); filter: brightness(1); }
 }
 
-.bar:nth-child(1) { animation-delay: 0.1s; }
-.bar:nth-child(2) { animation-delay: 0.2s; }
-.bar:nth-child(3) { animation-delay: 0.3s; }
-.bar:nth-child(4) { animation-delay: 0.2s; }
-.bar:nth-child(5) { animation-delay: 0.1s; }
+/* Status: IDLE (จอมืด - แสดงเฉพาะเมื่อ active=false) */
+.jarvis-idle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Status: LISTENING (วงกลมสีเหลืองกลางจอ พร้อม rings หมุนช้าๆ) */
+.jarvis-listening .core { 
+  animation: core-pulse 2s infinite ease-in-out; 
+  background: radial-gradient(circle, #ffffff 0%, #ffcc00 30%, #ff9d00 60%, transparent 90%);
+  box-shadow: 0 0 60px #ff9d00, 0 0 100px #ff9d00;
+  filter: brightness(1.2);
+}
+.jarvis-listening .ring-outer { 
+  animation: spin-cw 8s linear infinite; 
+  border-color: #ff9d00;
+  border-width: 3px;
+  opacity: 0.8;
+}
+.jarvis-listening .ring-inner { 
+  animation: spin-ccw 4s linear infinite; 
+  border-color: #ffcc00;
+  border-width: 3px;
+  opacity: 0.9;
+}
+
+/* Status: THINKING (หมุนเร็วมาก + สั่น) */
+.jarvis-thinking .core { 
+  animation: thinking-jiggle 0.4s infinite linear, core-pulse 1s infinite ease-in-out; 
+  filter: brightness(1.8);
+  box-shadow: 0 0 80px #ff9d00, 0 0 120px #ff5e00;
+}
+.jarvis-thinking .ring-outer { 
+  animation: spin-cw 1.5s linear infinite; 
+  border-width: 5px; 
+  border-color: #ffdeb3;
+  opacity: 1;
+}
+.jarvis-thinking .ring-inner { 
+  animation: spin-ccw 0.8s linear infinite; 
+  border-width: 5px; 
+  border-color: #ffffff;
+  opacity: 1;
+}
+
+/* Status: SPEAKING (ขยาย-หุบ อย่างรวดเร็ว) */
+.jarvis-speaking .core { 
+  animation: speaking-vibrate 0.25s infinite ease-out; 
+  box-shadow: 0 0 100px var(--jarvis-orange), 0 0 150px var(--jarvis-glow);
+  filter: brightness(2);
+}
+.jarvis-speaking .ring-outer { 
+  animation: spin-cw 3s linear infinite, speaking-vibrate 0.25s infinite ease-out; 
+  border-color: #ff5e00; 
+  opacity: 1;
+  border-width: 4px;
+}
+.jarvis-speaking .ring-inner { 
+  animation: spin-ccw 1.5s linear infinite, speaking-vibrate 0.25s infinite ease-out; 
+  border-color: #ffae00; 
+  border-width: 6px;
+  opacity: 1;
+}

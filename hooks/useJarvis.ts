@@ -21,22 +21,23 @@ export function useJarvis() {
   const refs = useRef<any>({});
   const speakTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // ค่า timeout (ms) ที่จะรอหลังจาก chunk สุดท้าย ถ้าไม่มี chunk ใหม่มา → ถือว่าจบการพูด
+  const SPEAKING_TIMEOUT_MS = 2800; // ปรับได้ 2200–3500 ตามความเหมาะสม
+
   // Auto-close if listening for too long
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     if (status === 'listening' && active) {
-        timeout = setTimeout(() => {
-            console.log('💤 Auto closing due to inactivity...');
-            // เรียก toggle เพื่อปิด (ต้องแน่ใจว่ามันจะปิด)
-            // เนื่องจาก toggle ใช้ active state ใน closure, เราอาจต้องเรียกผ่านวิธีอื่น หรือพึ่งพา setActive
-            if (refs.current.session) {
-                refs.current.stream?.getTracks().forEach((t: any) => t.stop());
-                refs.current.audioCtx?.close();
-                refs.current.session?.close();
-                setActive(false);
-                setStatus('idle');
-            }
-        }, 8000); // 8 วินาทีละกันครับ 5 วิสั้นไปนิดนึง
+      timeout = setTimeout(() => {
+        console.log('💤 Auto closing due to inactivity...');
+        if (refs.current.session) {
+          refs.current.stream?.getTracks().forEach((t: any) => t.stop());
+          refs.current.audioCtx?.close();
+          refs.current.session?.close();
+          setActive(false);
+          setStatus('idle');
+        }
+      }, 15000);
     }
     return () => clearTimeout(timeout);
   }, [status, active]);
@@ -91,19 +92,17 @@ export function useJarvis() {
 
                 if (!fc.name || !fc.id) continue;
 
-                // Special handling for close_session
                 if (fc.name === 'close_session') {
-                    console.log('👋 Closing session via tool call');
-                    session.sendToolResponse({
-                        functionResponses: [{ id: fc.id, name: fc.name, response: { success: true } }]
-                    });
-                     // Close everything
-                    stream.getTracks().forEach((t: any) => t.stop());
-                    audioCtx.close();
-                    session.close();
-                    setActive(false);
-                    setStatus('idle');
-                    return;
+                  console.log('👋 Closing session via tool call');
+                  session.sendToolResponse({
+                    functionResponses: [{ id: fc.id, name: fc.name, response: { success: true } }]
+                  });
+                  stream.getTracks().forEach((t: any) => t.stop());
+                  audioCtx.close();
+                  session.close();
+                  setActive(false);
+                  setStatus('idle');
+                  return;
                 }
 
                 const handler = toolHandlers[fc.name];
@@ -111,8 +110,6 @@ export function useJarvis() {
                   try {
                     const result = await handler();
                     console.log(`✅ Tool result:`, result);
-
-                    // ส่ง response กลับไปให้ Gemini
                     session.sendToolResponse({
                       functionResponses: [{
                         id: fc.id,
@@ -137,31 +134,35 @@ export function useJarvis() {
               return;
             }
 
-
-            // Handle audio response
+            // ────────────────────────────────────────────────
+            // Handle audio response (ส่วนที่แก้ไขหลัก)
+            // ────────────────────────────────────────────────
             const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-            if (!audioData) return;
+            if (audioData) {
+              const float32 = base64ToFloat32(audioData);
+              const buffer = audioCtx.createBuffer(1, float32.length, SAMPLE_RATE);
+              buffer.copyToChannel(float32 as any, 0);
 
-            const float32 = base64ToFloat32(audioData);
-            const buffer = audioCtx.createBuffer(1, float32.length, SAMPLE_RATE);
-            buffer.copyToChannel(float32 as any, 0);
+              const source = audioCtx.createBufferSource();
+              source.buffer = buffer;
+              source.connect(audioCtx.destination);
 
-            const source = audioCtx.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioCtx.destination);
+              const playTime = Math.max(audioCtx.currentTime, nextStartTime);
+              source.start(playTime);
+              nextStartTime = playTime + buffer.duration;
 
-            const playTime = Math.max(audioCtx.currentTime, nextStartTime);
-            source.start(playTime);
-            nextStartTime = playTime + buffer.duration;
-            
-            // Set stats to speaking
-            setStatus('speaking');
-            
-            // Reset to listening after audio finishes
-            if (speakTimeout.current) clearTimeout(speakTimeout.current);
-            speakTimeout.current = setTimeout(() => {
+              // ตั้ง / reset timeout ทุกครั้งที่มี chunk ใหม่
+              setStatus('speaking');
+
+              if (speakTimeout.current) {
+                clearTimeout(speakTimeout.current);
+              }
+
+              speakTimeout.current = setTimeout(() => {
                 setStatus('listening');
-            }, (buffer.duration * 1000) + 200); // Add small buffer
+                console.log('🗣️ No more audio chunks → back to listening');
+              }, SPEAKING_TIMEOUT_MS);
+            }
           }
         }
       });
