@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 
 interface TriggerEvent {
   action: 'toggle' | 'start' | 'stop' | 'sendText' | 'connected' | 'wakeAndGreet';
@@ -102,7 +102,20 @@ export function useTriggerListener({
     };
   }, [connect]);
 
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !eventSourceRef.current) return;
+    
+    const checkStatus = () => {
+      setConnected(eventSourceRef.current?.readyState === 1);
+    };
+
+    const interval = setInterval(checkStatus, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return {
-    isConnected: eventSourceRef.current?.readyState === EventSource.OPEN
+    isConnected: connected
   };
 }

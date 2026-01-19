@@ -22,7 +22,7 @@ export function useJarvis() {
   const speakTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // ค่า timeout (ms) ที่จะรอหลังจาก chunk สุดท้าย ถ้าไม่มี chunk ใหม่มา → ถือว่าจบการพูด
-  const SPEAKING_TIMEOUT_MS = 2800; // ปรับได้ 2200–3500 ตามความเหมาะสม
+  const SPEAKING_TIMEOUT_MS = 4000; // ปรับได้ 2200–3500 ตามความเหมาะสม
 
   // Auto-close if listening for too long
   useEffect(() => {

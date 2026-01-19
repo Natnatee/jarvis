@@ -33,24 +33,13 @@ export async function change_monitor_screen(screens: string[], sequenceId: strin
   const maxAttempts = 5;
 
   while (attempts < maxAttempts) {
-    try {
-      // Use the first screen ID for the trigger as per example patterns, 
-      // or if you want to trigger for all, we could loop.
-      // Given the previous example used "0200068F2535", we'll use screens[0] for the trigger context.
-      const triggerId = screens[0]; 
-      
-      const response = await remote_api(triggerId, name);
-      
-      // If we reach here without error (axios default 2xx), consider it success.
-      // Based on the prompt "จนกว่าจะได้สเตตัส 200", usually axios throws for non-2xx.
-      success = true;
-      break;
-    } catch (error) {
-      attempts++;
-      console.log(`Trigger attempt ${attempts} failed. Retrying in 1s...`);
-      if (attempts < maxAttempts) {
-        await sleep(1000);
-      }
+    const triggerId = screens[0]; 
+    
+    const response = await remote_api(triggerId, name);
+    console.log("attempts", attempts)
+    attempts++; 
+    if (attempts < maxAttempts) {
+      await sleep(1000);
     }
   }
 
