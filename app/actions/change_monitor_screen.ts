@@ -28,23 +28,28 @@ export async function change_monitor_screen(screens: string[], sequenceId: strin
   // If we should trigger for ALL screens and fail if ANY fail, or just if the process fails.
   // The prompt implies a general trigger logic.
   
-  let success = false;
-  let attempts = 0;
+  let lastSuccess = false;
   const maxAttempts = 5;
 
-  while (attempts < maxAttempts) {
+  for (let attempts = 1; attempts <= maxAttempts; attempts++) {
     const triggerId = screens[0]; 
-    
-    const response = await remote_api(triggerId, name);
-    console.log("attempts", attempts)
-    attempts++; 
+    try {
+      await remote_api(triggerId, name);
+      console.log(`Trigger attempt ${attempts} succeeded.`);
+      lastSuccess = true;
+    } catch (error) {
+      console.log(`Trigger attempt ${attempts} failed.`);
+      lastSuccess = false;
+    }
+
+    // Wait 1s between attempts, except after the last one
     if (attempts < maxAttempts) {
       await sleep(1000);
     }
   }
 
-  if (!success) {
-    return { message: "ไม่สามารถ ทริกเกอจอได้" };
+  if (!lastSuccess) {
+    return { success: false, message: "ไม่สามารถ ทริกเกอจอได้" };
   }
 
   return { success: true, message: "เปลี่ยนจอและทริกเกอร์สำเร็จ" };

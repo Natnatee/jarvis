@@ -5,12 +5,17 @@ import { GoogleGenAI, Modality } from '@google/genai';
 import { base64ToFloat32, floatToBase64PCM } from '@/lib/audioConverter';
 import instructions from '@/lib/instructions.json';
 import { say_hello } from '@/app/actions/say_hello';
+import { change_monitor_screen } from '@/app/actions/change_monitor_screen';
 
 const SAMPLE_RATE = 24000;
 
 // Tool handlers - เพิ่ม function ใหม่ได้ที่นี่
-const toolHandlers: Record<string, () => Promise<any>> = {
-  say_hello: say_hello,
+const toolHandlers: Record<string, (args: any) => Promise<any>> = {
+  say_hello: async () => say_hello(),
+  monitor_screen: async (args: { screen_id: string; name: string; sequence_id: string }) => {
+    // แปลง screen_id เป็น array ตามที่ action ต้องการ
+    return change_monitor_screen([args.screen_id], args.sequence_id, args.name);
+  }
 };
 
 export type JarvisStatus = 'idle' | 'listening' | 'thinking' | 'speaking';
@@ -108,7 +113,7 @@ export function useJarvis() {
                 const handler = toolHandlers[fc.name];
                 if (handler) {
                   try {
-                    const result = await handler();
+                    const result = await handler(fc.args);
                     console.log(`✅ Tool result:`, result);
                     session.sendToolResponse({
                       functionResponses: [{
