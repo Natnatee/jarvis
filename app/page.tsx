@@ -4,12 +4,15 @@ import { useJarvis } from '@/hooks/useJarvis';
 import { useTriggerListener } from '@/hooks/useTriggerListener';
 
 export default function Page() {
-  const { active, toggle, sendText, status } = useJarvis();
+  const { active, toggle, open, close, sendText, status } = useJarvis();
 
   // Subscribe to external triggers
   useTriggerListener({
     onToggle: toggle,
+    onOpen: open,     // Idempotent - ยิงซ้ำกี่ครั้งก็ไม่ปิด
+    onClose: close,   // Idempotent - ยิงซ้ำกี่ครั้งก็ไม่เปิด
     onSendText: sendText,
+    isActive: active,
     enabled: true,
   });
 

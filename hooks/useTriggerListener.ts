@@ -10,17 +10,19 @@ interface TriggerEvent {
 
 interface UseTriggerListenerOptions {
   onToggle: () => void;
-  onStart?: () => void;
-  onStop?: () => void;
+  onOpen?: () => void;  // Idempotent open
+  onClose?: () => void; // Idempotent close
   onSendText?: (message: string) => void;
+  isActive?: boolean;   // ใช้เช็คสถานะก่อน wakeAndGreet
   enabled?: boolean;
 }
 
 export function useTriggerListener({
   onToggle,
-  onStart,
-  onStop,
+  onOpen,
+  onClose,
   onSendText,
+  isActive = false,
   enabled = true
 }: UseTriggerListenerOptions) {
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -51,10 +53,10 @@ export function useTriggerListener({
             onToggle();
             break;
           case 'start':
-            onStart?.();
+            onOpen?.(); // Idempotent - ถ้าเปิดอยู่แล้วจะไม่ทำอะไร
             break;
           case 'stop':
-            onStop?.();
+            onClose?.(); // Idempotent - ถ้าปิดอยู่แล้วจะไม่ทำอะไร
             break;
           case 'sendText':
             if (data.message) {
@@ -63,10 +65,12 @@ export function useTriggerListener({
             break;
           case 'wakeAndGreet':
             if (data.message) {
-              // 1. สั่งเปิด (ถ้ายังไม่เปิด logic นี้อาจจะต้องเช็ค active state ซึ่งตอนนี้เราส่ง toggle ไปก่อน)
-              onToggle(); 
+              // ใช้ onOpen แทน toggle เพื่อให้ idempotent
+              if (!isActive) {
+                onOpen?.();
+              }
               
-              // 2. รอ 1.5 วินาที แล้วส่งข้อความ
+              // รอ 1.5 วินาที แล้วส่งข้อความ
               setTimeout(() => {
                 onSendText?.(data.message!);
               }, 1500);
@@ -87,7 +91,7 @@ export function useTriggerListener({
         connect();
       }, 3000);
     };
-  }, [enabled, onToggle, onStart, onStop, onSendText]);
+  }, [enabled, onToggle, onOpen, onClose, onSendText, isActive]);
 
   useEffect(() => {
     connect();

@@ -60,16 +60,21 @@ export function useJarvis() {
     console.log('📝 Text sent:', message);
   }, []);
 
-  const toggle = useCallback(async () => {
-    if (active) {
-      refs.current.stream?.getTracks().forEach((t: any) => t.stop());
-      refs.current.audioCtx?.close();
-      refs.current.session?.close();
-      setActive(false);
-      setStatus('idle');
-      if (speakTimeout.current) clearTimeout(speakTimeout.current);
-      return;
-    }
+  // ปิด Jarvis (idempotent - ถ้าปิดอยู่แล้วจะไม่ทำอะไร)
+  const close = useCallback(() => {
+    if (!active) return; // ถ้าปิดอยู่แล้ว ไม่ต้องทำอะไร
+    
+    refs.current.stream?.getTracks().forEach((t: any) => t.stop());
+    refs.current.audioCtx?.close();
+    refs.current.session?.close();
+    setActive(false);
+    setStatus('idle');
+    if (speakTimeout.current) clearTimeout(speakTimeout.current);
+  }, [active]);
+
+  // เปิด Jarvis (idempotent - ถ้าเปิดอยู่แล้วจะไม่ทำอะไร)
+  const open = useCallback(async () => {
+    if (active) return; // ถ้าเปิดอยู่แล้ว ไม่ต้องทำอะไร
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -196,5 +201,14 @@ export function useJarvis() {
     }
   }, [active]);
 
-  return { active, toggle, sendText, status };
+  // toggle สำหรับ backward compatibility
+  const toggle = useCallback(async () => {
+    if (active) {
+      close();
+    } else {
+      await open();
+    }
+  }, [active, open, close]);
+
+  return { active, toggle, open, close, sendText, status };
 }
